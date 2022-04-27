@@ -16,7 +16,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>2.6.1.Final</quarkus.platform.version>
+        <quarkus.platform.version>2.8.2.Final</quarkus.platform.version>
         <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
         <exec.mainClass>com.example.Main</exec.mainClass>
         <executable-suffix/>
@@ -218,7 +218,7 @@
                     <plugin>
                         <groupId>org.jreleaser</groupId>
                         <artifactId>jreleaser-maven-plugin</artifactId>
-                        <version>0.10.0</version>
+                        <version>1.0.0</version>
                         <configuration>
                             <jreleaser>
                                 <release>
@@ -234,7 +234,7 @@
                                                 <format>- {{contributorName}}</format>
                                             </contributors>
                                             <hide>
-                                                <categories>Merge</categories>
+                                                <categories>merge</categories>
                                                 <contributors>GitHub,dependabot</contributors>
                                             </hide>
                                         </changelog>
