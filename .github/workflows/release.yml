@@ -10,8 +10,13 @@ on:
         description: "Next version"
         required: false
 
+env:
+  GRAAL_VERSION: '22.1.0'
+  JAVA_VERSION: '11'
+  JAVA_DISTRO: 'zulu'
+
 jobs:
-  version:
+  precheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,15 +24,15 @@ jobs:
       - name: 'Set up Java'
         uses: actions/setup-java@v2
         with:
-          java-version: 11
-          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRO }}
 
       - name: 'Cache Maven packages'
         uses: actions/cache@v1
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
 
       - name: 'Set release version'
         id: version
@@ -40,7 +45,7 @@ jobs:
           then
             NEXT_VERSION=$COMPUTED_NEXT_VERSION
           fi
-          ./mvnw -B versions:set versions:commit -DnewVersion=$RELEASE_VERSION
+          ./mvnw -B -ntp -ntp versions:set versions:commit -DnewVersion=$RELEASE_VERSION
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Action"
           git commit -a -m "🏁 Releasing version $RELEASE_VERSION"
@@ -60,7 +65,7 @@ jobs:
 
   # Build native executable per runner
   build:
-    needs: [ version ]
+    needs: [ precheck ]
     name: 'Build with Graal on ${{ matrix.os }}'
     strategy:
       fail-fast: true
@@ -86,23 +91,23 @@ jobs:
       - name: 'Set up Graal'
         uses: graalvm/setup-graalvm@v1
         with:
-          version: '21.2.0'
-          java-version: '11'
+          version: ${{ env.GRAAL_VERSION }}
+          java-version: ${{ env.JAVA_VERSION }}
           components: 'native-image'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Cache Maven packages'
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
 
       - name: 'Build Native Image'
-        run: ./mvnw -B --file pom.xml -Pnative package
+        run: ./mvnw -B -ntp --file pom.xml -Pnative package
 
       - name: 'Create distribution'
-        run: ./mvnw -B --file pom.xml -Pdist package -DskipTests
+        run: ./mvnw -B -ntp --file pom.xml -Pdist package -DskipTests
 
       - name: 'Upload build artifact'
         uses: actions/upload-artifact@v2
@@ -155,26 +160,26 @@ jobs:
       - name: 'Set up Java'
         uses: actions/setup-java@v2
         with:
-          java-version: 11
-          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRO }}
 
       - name: 'Cache Maven packages'
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
 
       - name: 'Release with JReleaser'
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B --file pom.xml -Prelease -DartifactsDir=artifacts jreleaser:full-release
+        run: ./mvnw -B -ntp --file pom.xml -Prelease -DartifactsDir=artifacts jreleaser:full-release
           
       - name: 'Set next version'
         env:
           NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
         run: |
-          ./mvnw -B versions:set versions:commit -DnewVersion=$NEXT_VERSION
+          ./mvnw -B -ntp versions:set versions:commit -DnewVersion=$NEXT_VERSION
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Action"
           git commit -a -m "⬆️  Next version $NEXT_VERSION"
