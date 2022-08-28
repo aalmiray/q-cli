@@ -8,7 +8,11 @@
     <version>0.1.0</version>
 
     <properties>
-        <compiler-plugin.version>3.8.1</compiler-plugin.version>
+        <assembly-plugin.version>3.4.2</assembly-plugin.version>
+        <compiler-plugin.version>3.10.1</compiler-plugin.version>
+        <jreleaser-plugin.version>1.2.0</jreleaser-plugin.version>
+        <os-plugin.version>1.7.0</os-plugin.version>
+        <surefire-plugin.version>3.0.0-M7</surefire-plugin.version>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -16,8 +20,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>2.8.2.Final</quarkus.platform.version>
-        <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
+        <quarkus.platform.version>2.11.3.Final</quarkus.platform.version>
         <exec.mainClass>com.example.Main</exec.mainClass>
         <executable-suffix/>
         <artifactsDir>target/distributions</artifactsDir>
@@ -76,7 +79,7 @@
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.0</version>
+                <version>${os-plugin.version}</version>
             </extension>
         </extensions>
 
@@ -116,7 +119,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>${assembly-plugin.version}</version>
                 <configuration>
                     <attach>false</attach>
                     <appendAssemblyId>false</appendAssemblyId>
@@ -218,7 +221,7 @@
                     <plugin>
                         <groupId>org.jreleaser</groupId>
                         <artifactId>jreleaser-maven-plugin</artifactId>
-                        <version>1.0.0</version>
+                        <version>${jreleaser-plugin.version}</version>
                         <configuration>
                             <jreleaser>
                                 <release>
