@@ -47,7 +47,7 @@ jobs:
   build:
     needs: [ precheck ]
     if: endsWith(${{ needs.precheck.outputs.VERSION }}, '-SNAPSHOT')
-        name: 'Build with Graal on ${{ matrix.os }}'
+    name: 'Build with Graal on ${{ matrix.os }}'
     strategy:
       fail-fast: true
       matrix:
