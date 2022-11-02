@@ -11,24 +11,27 @@ on:
         required: false
 
 env:
-  GRAAL_VERSION: '22.1.0'
+  GRAAL_VERSION: '22.3.0'
   JAVA_VERSION: '11'
   JAVA_DISTRO: 'zulu'
 
 jobs:
   precheck:
     runs-on: ubuntu-latest
+    outputs:
+      HEAD: ${{ steps.version.outputs.HEAD }}
+      NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Set up Java'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRO }}
 
       - name: 'Cache Maven packages'
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -50,18 +53,9 @@ jobs:
           git config --global user.name "GitHub Action"
           git commit -a -m "🏁 Releasing version $RELEASE_VERSION"
           git push origin HEAD:main
-          git rev-parse HEAD > HEAD
-          echo $RELEASE_VERSION > RELEASE_VERSION
-          echo $PLAIN_VERSION > PLAIN_VERSION
-          echo $NEXT_VERSION > NEXT_VERSION
-
-      - name: 'Upload version files'
-        uses: actions/upload-artifact@v2
-        with:
-          name: artifacts
-          path: |
-            HEAD
-            *_VERSION
+          HEAD=`git rev-parse HEAD`
+          echo "NEXT_VERSION=$(echo $NEXT_VERSION)" >>$GITHUB_OUTPUT
+          echo "HEAD=$(echo $HEAD)" >>$GITHUB_OUTPUT
 
   # Build native executable per runner
   build:
@@ -72,21 +66,11 @@ jobs:
       matrix:
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: 'Download all build artifacts'
-        uses: actions/download-artifact@v2
-
-      - name: 'Read HEAD ref'
-        id: head
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: artifacts/HEAD
-
       - name: 'Check out repository'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
-          ref: ${{ steps.head.outputs.content }}
+          ref: ${{ needs.precheck.outputs.HEAD }}
         
       - name: 'Set up Graal'
         uses: graalvm/setup-graalvm@v1
@@ -97,7 +81,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Cache Maven packages'
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -110,7 +94,7 @@ jobs:
         run: ./mvnw -B -ntp --file pom.xml -Pdist package -DskipTests
 
       - name: 'Upload build artifact'
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: artifacts
           path: |
@@ -119,52 +103,26 @@ jobs:
 
   # Collect all executables and release
   release:
-    needs: [ build ]
+    needs: [ precheck, build ]
     runs-on: ubuntu-latest
-
     steps:
-      # must read HEAD before checkout
-      - name: 'Download all build artifacts'
-        uses: actions/download-artifact@v2
-
-      - name: 'Read HEAD ref'
-        id: head
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: artifacts/HEAD
-
-      - name: 'Read versions'
-        id: version
-        run: |
-          RELEASE_VERSION=`cat artifacts/RELEASE_VERSION`
-          PLAIN_VERSION=`cat artifacts/PLAIN_VERSION`
-          NEXT_VERSION=`cat artifacts/NEXT_VERSION`
-          echo "RELEASE_VERSION = $RELEASE_VERSION"
-          echo "PLAIN_VERSION   = $PLAIN_VERSION"
-          echo "NEXT_VERSION    = $NEXT_VERSION"
-          echo "::set-output name=RELEASE_VERSION::$RELEASE_VERSION"
-          echo "::set-output name=PLAIN_VERSION::$PLAIN_VERSION"
-          echo "::set-output name=NEXT_VERSION::$NEXT_VERSION"
-
       - name: 'Check out repository'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
-          ref: ${{ steps.head.outputs.content }}
+          ref: ${{ needs.precheck.outputs.HEAD }}
           fetch-depth: 0
 
-      # checkout will clobber downloaded artifacts
-      # we have to download them again
       - name: 'Download all build artifacts'
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
 
       - name: 'Set up Java'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRO }}
 
       - name: 'Cache Maven packages'
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -176,10 +134,8 @@ jobs:
         run: ./mvnw -B -ntp --file pom.xml -Prelease -DartifactsDir=artifacts jreleaser:full-release
           
       - name: 'Set next version'
-        env:
-          NEXT_VERSION: ${{ steps.version.outputs.NEXT_VERSION }}
         run: |
-          ./mvnw -B -ntp versions:set versions:commit -DnewVersion=$NEXT_VERSION
+          ./mvnw -B -ntp versions:set versions:commit -DnewVersion=${{ needs.precheck.outputs.NEXT_VERSION }}
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Action"
           git commit -a -m "⬆️  Next version $NEXT_VERSION"
